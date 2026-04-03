@@ -1,0 +1,32 @@
+.page-intro h2,
+.dimension-section h3 {
+  margin-top: 0;
+}
+
+.question-card {
+  padding: 14px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.question-card:last-child {
+  border-bottom: none;
+}
+
+.scale-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.submit-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}

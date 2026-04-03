@@ -4,11 +4,21 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from decimal import Decimal
 import models
+from fastapi.middleware.cors import CORSMiddleware
 
 # python -m uvicorn main:app --reload
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ----------------------------
 # Database dependency
