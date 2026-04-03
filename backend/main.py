@@ -2,7 +2,10 @@ from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import SessionLocal
+from decimal import Decimal
 import models
+
+#python -m uvicorn main:app --reload
 
 app = FastAPI()
 
@@ -43,6 +46,15 @@ def calculate_risk_level(score: float) -> str:
         return "Low Risk"
 
 
+def to_float(value):
+    """
+    Safely convert Decimal / numeric DB values to float for JSON response.
+    """
+    if isinstance(value, Decimal):
+        return float(value)
+    return float(value)
+
+
 DIMENSION_WEIGHTS = {
     "Authentication & Account Security": 0.25,
     "Phishing & Social Engineering": 0.20,
@@ -51,6 +63,51 @@ DIMENSION_WEIGHTS = {
     "Network Hygiene": 0.12,
     "Data Protection & Privacy": 0.10
 }
+RECOMMENDATIONS = {
+    "Authentication & Account Security": [
+        "Enable two-factor authentication (2FA)",
+        "Use a password manager",
+        "Avoid password reuse",
+        "Use strong and unique passwords"
+    ],
+
+    "Phishing & Social Engineering": [
+        "Verify sender addresses before opening emails",
+        "Avoid clicking unknown links",
+        "Do not enter credentials after email links",
+        "Report suspicious emails"
+    ],
+
+    "Patch & Update Hygiene": [
+        "Enable automatic updates",
+        "Install updates promptly",
+        "Avoid delaying security patches",
+        "Keep applications updated"
+    ],
+
+    "Device Protection & Secure Configuration": [
+        "Lock device with PIN or biometrics",
+        "Install apps only from trusted sources",
+        "Enable antivirus protection",
+        "Review app permissions regularly"
+    ],
+
+    "Network Hygiene": [
+        "Avoid public Wi-Fi for sensitive activity",
+        "Use VPN on public networks",
+        "Verify HTTPS before login",
+        "Avoid unknown Wi-Fi networks"
+    ],
+
+    "Data Protection & Privacy": [
+        "Regularly back up important data",
+        "Review privacy settings",
+        "Encrypt sensitive files",
+        "Delete unnecessary personal data"
+    ]
+}
+
+
 
 
 # ----------------------------
@@ -166,3 +223,132 @@ def submit_assessment(data: AssessmentSubmission, db: Session = Depends(get_db))
         "risk_level": risk_level,
         "dimension_scores": dimension_scores
     }
+
+
+# ----------------------------
+# GET /user-history/{user_id}
+# Returns:
+# 1. all assessment history
+# 2. dimension scores for each assessment
+# 3. latest comparison if there are at least 2 assessments
+# ----------------------------
+@app.get("/user-history/{user_id}")
+def get_user_history(user_id: int, db: Session = Depends(get_db)):
+    assessments = (
+        db.query(models.Assessment)
+        .filter(models.Assessment.user_id == user_id)
+        .order_by(models.Assessment.created_at.asc(), models.Assessment.id.asc())
+        .all()
+    )
+
+    if not assessments:
+        raise HTTPException(status_code=404, detail="No assessment history found for this user.")
+
+    history = []
+
+    for assessment in assessments:
+        dimension_rows = (
+            db.query(models.DimensionScore)
+            .filter(models.DimensionScore.assessment_id == assessment.id)
+            .all()
+        )
+
+        dimension_scores = {
+            row.dimension: round(to_float(row.score), 2)
+            for row in dimension_rows
+        }
+
+        history.append({
+            "assessment_id": assessment.id,
+            "overall_score": round(to_float(assessment.overall_score), 2),
+            "risk_level": assessment.risk_level,
+            "created_at": assessment.created_at,
+            "dimension_scores": dimension_scores
+        })
+
+    latest_comparison = None
+
+    if len(history) >= 2:
+        previous = history[-2]
+        current = history[-1]
+
+        overall_change = round(
+            current["overall_score"] - previous["overall_score"], 2
+        )
+
+        dimension_changes = {}
+        all_dimensions = set(previous["dimension_scores"].keys()) | set(current["dimension_scores"].keys())
+
+        for dimension in all_dimensions:
+            prev_score = previous["dimension_scores"].get(dimension, 0.0)
+            curr_score = current["dimension_scores"].get(dimension, 0.0)
+
+            dimension_changes[dimension] = {
+                "previous_score": round(prev_score, 2),
+                "current_score": round(curr_score, 2),
+                "change": round(curr_score - prev_score, 2)
+            }
+
+        latest_comparison = {
+            "previous_assessment_id": previous["assessment_id"],
+            "current_assessment_id": current["assessment_id"],
+            "previous_overall_score": previous["overall_score"],
+            "current_overall_score": current["overall_score"],
+            "overall_change": overall_change,
+            "previous_risk_level": previous["risk_level"],
+            "current_risk_level": current["risk_level"],
+            "dimension_changes": dimension_changes
+        }
+
+    return {
+        "user_id": user_id,
+        "total_assessments": len(history),
+        "history": history,
+        "latest_comparison": latest_comparison
+    }
+
+    # ----------------------------
+# GET /recommendations/{assessment_id}
+# ----------------------------
+@app.get("/recommendations/{assessment_id}")
+def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
+
+    assessment = db.query(models.Assessment).filter(
+        models.Assessment.id == assessment_id
+    ).first()
+
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    dimension_scores = db.query(models.DimensionScore).filter(
+        models.DimensionScore.assessment_id == assessment_id
+    ).all()
+
+    recommendations = []
+
+    for ds in dimension_scores:
+        score = round(float(ds.score), 2)
+
+        if score < 40:
+            level = "critical"
+        elif score < 60:
+            level = "improve"
+        else:
+            continue
+
+        recs = RECOMMENDATIONS.get(ds.dimension, [])
+
+        recommendations.append({
+            "dimension": ds.dimension,
+            "score": score,
+            "level": level,
+            "recommendations": recs
+        })
+
+    return {
+    "assessment_id": assessment_id,
+    "overall_score": round(float(assessment.overall_score), 2),
+    "risk_level": assessment.risk_level,
+    "has_recommendations": len(recommendations) > 0,
+    "recommendations": recommendations
+}
