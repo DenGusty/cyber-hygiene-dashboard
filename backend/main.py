@@ -5,7 +5,7 @@ from database import SessionLocal
 from decimal import Decimal
 import models
 
-#python -m uvicorn main:app --reload
+# python -m uvicorn main:app --reload
 
 app = FastAPI()
 
@@ -63,50 +63,301 @@ DIMENSION_WEIGHTS = {
     "Network Hygiene": 0.12,
     "Data Protection & Privacy": 0.10
 }
-RECOMMENDATIONS = {
-    "Authentication & Account Security": [
-        "Enable two-factor authentication (2FA)",
-        "Use a password manager",
-        "Avoid password reuse",
-        "Use strong and unique passwords"
-    ],
+QUESTION_RECOMMENDATIONS = {
+    1: {
+        "title": "Avoid password reuse",
+        "critical": [
+            "Stop reusing the same password across different websites.",
+            "Change reused passwords on your email, banking, and social media accounts first.",
+            "Use a password manager to create unique passwords for every important account."
+        ],
+        "improve": [
+            "Reduce password reuse on your most important accounts first.",
+            "Start replacing reused passwords with unique ones for email and banking."
+        ]
+    },
+    2: {
+        "title": "Use a password manager",
+        "critical": [
+            "Start using a password manager to generate and store strong unique passwords.",
+            "Begin with your email account and other high-value accounts.",
+            "Do not rely on memory alone for multiple important passwords."
+        ],
+        "improve": [
+            "Use a password manager at least for your main accounts.",
+            "Gradually move frequently used accounts into a password manager."
+        ]
+    },
+    3: {
+        "title": "Strengthen password length",
+        "critical": [
+            "Use longer passwords or passphrases for important accounts.",
+            "Avoid short and predictable passwords.",
+            "Update weak passwords on email, banking, and cloud accounts first."
+        ],
+        "improve": [
+            "Increase password length on your most sensitive accounts.",
+            "Replace medium-strength passwords with longer passphrases."
+        ]
+    },
+    4: {
+        "title": "Enable two-factor authentication",
+        "critical": [
+            "Enable two-factor authentication (2FA) on your email account immediately.",
+            "Then enable 2FA on banking, social media, and other important accounts.",
+            "Prefer authenticator apps or secure verification methods where available."
+        ],
+        "improve": [
+            "Expand 2FA to more important accounts.",
+            "Review which critical accounts still do not have 2FA enabled."
+        ]
+    },
 
-    "Phishing & Social Engineering": [
-        "Verify sender addresses before opening emails",
-        "Avoid clicking unknown links",
-        "Do not enter credentials after email links",
-        "Report suspicious emails"
-    ],
+    5: {
+        "title": "Check sender addresses carefully",
+        "critical": [
+            "Always check the sender address before opening attachments.",
+            "Be cautious of unexpected emails even if the display name looks familiar.",
+            "Treat mismatched or unusual sender domains as suspicious."
+        ],
+        "improve": [
+            "Check sender addresses more consistently before opening attachments.",
+            "Pause and verify the sender when an email feels unusual or urgent."
+        ]
+    },
+    6: {
+        "title": "Verify links before clicking",
+        "critical": [
+            "Do not click links in emails or messages without checking where they lead.",
+            "Hover over links or inspect the URL before opening them.",
+            "Open important websites manually instead of using embedded links."
+        ],
+        "improve": [
+            "Verify links more carefully before clicking.",
+            "Use direct website access for sensitive accounts instead of message links."
+        ]
+    },
+    7: {
+        "title": "Avoid entering credentials after email links",
+        "critical": [
+            "Stop entering login credentials after clicking links in emails.",
+            "Go directly to the official website or app when signing in.",
+            "Change passwords on important accounts if you may have entered credentials on a suspicious page."
+        ],
+        "improve": [
+            "Reduce the habit of signing in through email links.",
+            "Use bookmarks or manually typed URLs for important services."
+        ]
+    },
+    8: {
+        "title": "Report suspicious messages",
+        "critical": [
+            "Report suspicious emails or messages instead of ignoring them.",
+            "Use the reporting feature in email systems when available.",
+            "Reporting helps reduce repeated phishing exposure."
+        ],
+        "improve": [
+            "Report suspicious messages more consistently.",
+            "Use built-in phishing reporting tools when possible."
+        ]
+    },
 
-    "Patch & Update Hygiene": [
-        "Enable automatic updates",
-        "Install updates promptly",
-        "Avoid delaying security patches",
-        "Keep applications updated"
-    ],
+    9: {
+        "title": "Install operating system updates regularly",
+        "critical": [
+            "Install operating system updates much more regularly.",
+            "Do not leave devices unpatched for long periods.",
+            "Prioritise updates on devices used for email, banking, or coursework."
+        ],
+        "improve": [
+            "Install operating system updates more consistently.",
+            "Reduce the delay between update availability and installation."
+        ]
+    },
+    10: {
+        "title": "Enable automatic updates",
+        "critical": [
+            "Turn on automatic updates for your devices.",
+            "Automatic updates reduce the chance of long unprotected periods.",
+            "Check both system and security update settings."
+        ],
+        "improve": [
+            "Enable automatic updates on more of your devices.",
+            "Review whether update settings are active and working properly."
+        ]
+    },
+    11: {
+        "title": "Stop delaying security updates",
+        "critical": [
+            "Stop delaying security updates when they become available.",
+            "Security patches close known vulnerabilities and should be installed promptly.",
+            "Treat urgent security updates as a priority."
+        ],
+        "improve": [
+            "Reduce the time you wait before installing security updates.",
+            "Install security patches sooner, especially on frequently used devices."
+        ]
+    },
+    12: {
+        "title": "Keep applications updated",
+        "critical": [
+            "Update installed applications regularly, not just the operating system.",
+            "Outdated browsers, office tools, and messaging apps can create avoidable risks.",
+            "Review commonly used apps for pending updates."
+        ],
+        "improve": [
+            "Check application updates more often.",
+            "Focus first on browsers, communication apps, and software that handles personal data."
+        ]
+    },
 
-    "Device Protection & Secure Configuration": [
-        "Lock device with PIN or biometrics",
-        "Install apps only from trusted sources",
-        "Enable antivirus protection",
-        "Review app permissions regularly"
-    ],
+    13: {
+        "title": "Lock your device properly",
+        "critical": [
+            "Protect your device with a password, PIN, or biometric lock.",
+            "Do not leave phones or laptops unlocked, especially in shared spaces.",
+            "Use screen lock and auto-lock settings."
+        ],
+        "improve": [
+            "Use stronger and more consistent device locking.",
+            "Review whether your current lock method is reliable enough."
+        ]
+    },
+    14: {
+        "title": "Install apps only from trusted sources",
+        "critical": [
+            "Only install applications from trusted and official sources.",
+            "Avoid downloading software from unknown websites or unofficial stores.",
+            "Check publisher details and reviews before installation."
+        ],
+        "improve": [
+            "Be more selective about where you install apps from.",
+            "Prioritise official app stores and trusted vendors."
+        ]
+    },
+    15: {
+        "title": "Use antivirus or built-in protection",
+        "critical": [
+            "Enable antivirus or built-in device security protection.",
+            "Do not leave your device without any active security protection.",
+            "Check that protection tools are turned on and updated."
+        ],
+        "improve": [
+            "Review whether your current protection is enabled and working properly.",
+            "Make sure built-in or third-party security protection stays active."
+        ]
+    },
+    16: {
+        "title": "Review application permissions",
+        "critical": [
+            "Review app permissions regularly and remove unnecessary access.",
+            "Limit access to location, camera, microphone, contacts, and files unless needed.",
+            "Delete or restrict apps with excessive permissions."
+        ],
+        "improve": [
+            "Check app permissions more often.",
+            "Reduce unnecessary permissions for apps that do not need broad access."
+        ]
+    },
 
-    "Network Hygiene": [
-        "Avoid public Wi-Fi for sensitive activity",
-        "Use VPN on public networks",
-        "Verify HTTPS before login",
-        "Avoid unknown Wi-Fi networks"
-    ],
+    17: {
+        "title": "Avoid sensitive activity on public Wi-Fi",
+        "critical": [
+            "Do not use public Wi-Fi for banking, account login, or other sensitive activity.",
+            "Delay sensitive actions until you are on a trusted network or mobile data.",
+            "Public networks should be treated as higher risk by default."
+        ],
+        "improve": [
+            "Reduce sensitive activity on public Wi-Fi.",
+            "Use safer alternatives for logins and financial tasks when away from home."
+        ]
+    },
+    18: {
+        "title": "Check for HTTPS before entering credentials",
+        "critical": [
+            "Check that websites use HTTPS before entering credentials or personal information.",
+            "Do not sign in on websites with insecure or suspicious connection indicators.",
+            "Be especially careful on pages reached through links in emails or messages."
+        ],
+        "improve": [
+            "Verify HTTPS more consistently before entering credentials.",
+            "Pay closer attention to browser security indicators on login pages."
+        ]
+    },
+    19: {
+        "title": "Avoid unknown Wi-Fi networks",
+        "critical": [
+            "Avoid connecting to unknown or suspicious Wi-Fi networks.",
+            "Do not trust networks just because the name looks familiar or convenient.",
+            "Use known networks or mobile data when possible."
+        ],
+        "improve": [
+            "Be more cautious when choosing Wi-Fi networks.",
+            "Prefer trusted networks and avoid unnecessary connections to unknown hotspots."
+        ]
+    },
+    20: {
+        "title": "Use a VPN on public networks",
+        "critical": [
+            "Use a VPN when accessing the internet on public networks.",
+            "A VPN adds protection when you cannot avoid public Wi-Fi.",
+            "Prioritise VPN use for work, study, and account-related activity on shared networks."
+        ],
+        "improve": [
+            "Use a VPN more consistently on public networks.",
+            "Enable VPN especially when handling accounts or personal data outside home."
+        ]
+    },
 
-    "Data Protection & Privacy": [
-        "Regularly back up important data",
-        "Review privacy settings",
-        "Encrypt sensitive files",
-        "Delete unnecessary personal data"
-    ]
+    21: {
+        "title": "Back up important files regularly",
+        "critical": [
+            "Back up important files regularly.",
+            "Use automatic backup if possible instead of relying only on memory.",
+            "Make sure important coursework, photos, and personal files can be recovered."
+        ],
+        "improve": [
+            "Back up important files more consistently.",
+            "Review whether your most valuable files are included in backup routines."
+        ]
+    },
+    22: {
+        "title": "Review privacy settings",
+        "critical": [
+            "Review privacy settings on your social media and online accounts.",
+            "Reduce unnecessary public visibility of personal information.",
+            "Check who can view your posts, profile details, and contact information."
+        ],
+        "improve": [
+            "Review privacy settings more regularly.",
+            "Tighten visibility settings on the accounts you use most."
+        ]
+    },
+    23: {
+        "title": "Protect sensitive files with encryption",
+        "critical": [
+            "Store sensitive files in encrypted form when possible.",
+            "Do not keep highly sensitive personal data unprotected on shared or portable devices.",
+            "Use encrypted storage features or secure cloud options for important files."
+        ],
+        "improve": [
+            "Protect more of your sensitive files with encryption.",
+            "Start with financial, identity, and private personal documents."
+        ]
+    },
+    24: {
+        "title": "Delete unnecessary personal data",
+        "critical": [
+            "Delete unnecessary personal data from online services and old accounts.",
+            "Reduce the amount of personal information stored where it is no longer needed.",
+            "Review unused accounts and remove outdated personal data where possible."
+        ],
+        "improve": [
+            "Clean up unnecessary personal data more regularly.",
+            "Start by reviewing old accounts and services you no longer use."
+        ]
+    }
 }
-
 
 
 
@@ -307,48 +558,151 @@ def get_user_history(user_id: int, db: Session = Depends(get_db)):
         "latest_comparison": latest_comparison
     }
 
-    # ----------------------------
+# --------------------------------------------------
 # GET /recommendations/{assessment_id}
-# ----------------------------
+# grouped + question-level recommendation API
+# --------------------------------------------------
 @app.get("/recommendations/{assessment_id}")
 def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
 
-    assessment = db.query(models.Assessment).filter(
-        models.Assessment.id == assessment_id
-    ).first()
+    assessment = (
+        db.query(models.Assessment)
+        .filter(models.Assessment.id == assessment_id)
+        .first()
+    )
 
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    dimension_scores = db.query(models.DimensionScore).filter(
-        models.DimensionScore.assessment_id == assessment_id
-    ).all()
+    response_rows = (
+        db.query(models.Response, models.Question)
+        .join(models.Question, models.Response.question_id == models.Question.id)
+        .filter(models.Response.assessment_id == assessment_id)
+        .all()
+    )
 
-    recommendations = []
+    flat_recommendations = []
 
-    for ds in dimension_scores:
-        score = round(float(ds.score), 2)
+    # ----------------------------
+    # Question-level trigger
+    # ----------------------------
+    for response, question in response_rows:
+        score = int(response.score)
 
-        if score < 40:
+        if score <= 1:
             level = "critical"
-        elif score < 60:
+        elif score == 2:
             level = "improve"
         else:
             continue
 
-        recs = RECOMMENDATIONS.get(ds.dimension, [])
+        rec_config = QUESTION_RECOMMENDATIONS.get(question.id)
 
-        recommendations.append({
-            "dimension": ds.dimension,
+        if not rec_config:
+            continue
+
+        flat_recommendations.append({
+            "question_id": question.id,
+            "question_text": question.text,
+            "dimension": question.dimension,
             "score": score,
             "level": level,
-            "recommendations": recs
+            "title": rec_config["title"],
+            "recommendations": rec_config[level]
         })
 
+    # ----------------------------
+    # Sort: dimension + severity
+    # ----------------------------
+    severity_order = {
+        "critical": 0,
+        "improve": 1
+    }
+
+    flat_recommendations.sort(
+        key=lambda x: (
+            x["dimension"],
+            severity_order.get(x["level"], 99),
+            x["question_id"]
+        )
+    )
+
+    # ----------------------------
+    # Group by dimension
+    # ----------------------------
+    grouped = {}
+
+    for item in flat_recommendations:
+        dimension = item["dimension"]
+
+        if dimension not in grouped:
+            grouped[dimension] = {
+                "dimension": dimension,
+                "count": 0,
+                "highest_level": item["level"],
+                "items": []
+            }
+
+        # update highest severity
+        if item["level"] == "critical":
+            grouped[dimension]["highest_level"] = "critical"
+
+        grouped[dimension]["items"].append({
+            "question_id": item["question_id"],
+            "question_text": item["question_text"],
+            "score": item["score"],
+            "level": item["level"],
+            "title": item["title"],
+            "recommendations": item["recommendations"]
+        })
+
+        grouped[dimension]["count"] += 1
+
+    # ----------------------------
+    # Keep fixed dimension order
+    # ----------------------------
+    dimension_order = [
+        "Authentication & Account Security",
+        "Phishing & Social Engineering",
+        "Patch & Update Hygiene",
+        "Device Protection & Secure Configuration",
+        "Network Hygiene",
+        "Data Protection & Privacy"
+    ]
+
+    grouped_list = [
+        grouped[d]
+        for d in dimension_order
+        if d in grouped
+    ]
+
+    # ----------------------------
+    # Summary stats
+    # ----------------------------
+    critical_count = sum(
+        1 for x in flat_recommendations if x["level"] == "critical"
+    )
+
+    improve_count = sum(
+        1 for x in flat_recommendations if x["level"] == "improve"
+    )
+
+    # ----------------------------
+    # Final response
+    # ----------------------------
     return {
-    "assessment_id": assessment_id,
-    "overall_score": round(float(assessment.overall_score), 2),
-    "risk_level": assessment.risk_level,
-    "has_recommendations": len(recommendations) > 0,
-    "recommendations": recommendations
-}
+        "assessment_id": assessment_id,
+        "overall_score": round(float(assessment.overall_score), 2),
+        "risk_level": assessment.risk_level,
+
+        "has_recommendations": len(grouped_list) > 0,
+
+        "summary": {
+            "critical_count": critical_count,
+            "improve_count": improve_count,
+            "total_issues": len(flat_recommendations),
+            "affected_dimensions": len(grouped_list)
+        },
+
+        "recommendation_groups": grouped_list
+    }
