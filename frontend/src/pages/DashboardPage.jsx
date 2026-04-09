@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams, Link } from "react-router-dom";
-import { fetchRecommendations } from "../api/assessmentApi";
+import {
+  fetchAssessmentById,
+  fetchRecommendations,
+} from "../api/assessmentApi";
 import ScoreOverview from "../components/ScoreOverview";
 import DimensionCard from "../components/DimensionCard";
 import RecommendationGroup from "../components/RecommendationGroup";
@@ -15,26 +18,31 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadRecommendations = async () => {
+    const loadDashboardData = async () => {
       try {
-        const data = await fetchRecommendations(assessmentId);
-        setRecommendationData(data);
+        const [assessmentData, recommendationRes] = await Promise.all([
+          fetchAssessmentById(assessmentId),
+          fetchRecommendations(assessmentId),
+        ]);
+
+        setResult(assessmentData);
+        setRecommendationData(recommendationRes);
       } catch (err) {
-        console.error("Failed to fetch recommendations:", err);
+        console.error("Failed to fetch dashboard data:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadRecommendations();
+    loadDashboardData();
   }, [assessmentId]);
 
   if (loading) return <p>Loading dashboard...</p>;
+  if (!result) return <p>Failed to load dashboard data.</p>;
 
-  const overallScore =
-    result?.overall_score ?? recommendationData?.overall_score ?? 0;
-  const riskLevel = result?.risk_level ?? recommendationData?.risk_level ?? "Unknown";
-  const dimensionScores = result?.dimension_scores ?? {};
+  const overallScore = result.overall_score ?? 0;
+  const riskLevel = result.risk_level ?? "Unknown";
+  const dimensionScores = result.dimension_scores ?? {};
 
   return (
     <div className="dashboard-page">

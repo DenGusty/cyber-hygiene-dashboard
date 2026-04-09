@@ -568,6 +568,36 @@ def get_user_history(user_id: int, db: Session = Depends(get_db)):
         "latest_comparison": latest_comparison
     }
 
+@app.get("/assessment/{assessment_id}")
+def get_assessment(assessment_id: int, db: Session = Depends(get_db)):
+    assessment = (
+        db.query(models.Assessment)
+        .filter(models.Assessment.id == assessment_id)
+        .first()
+    )
+
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found.")
+
+    dimension_rows = (
+        db.query(models.DimensionScore)
+        .filter(models.DimensionScore.assessment_id == assessment_id)
+        .all()
+    )
+
+    dimension_scores = {
+        row.dimension: round(to_float(row.score), 2)
+        for row in dimension_rows
+    }
+
+    return {
+        "assessment_id": assessment.id,
+        "user_id": assessment.user_id,
+        "overall_score": round(to_float(assessment.overall_score), 2),
+        "risk_level": assessment.risk_level,
+        "created_at": assessment.created_at,
+        "dimension_scores": dimension_scores
+    }
 # --------------------------------------------------
 # GET /recommendations/{assessment_id}
 # grouped + question-level recommendation API

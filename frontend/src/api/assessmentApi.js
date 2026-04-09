@@ -23,3 +23,8 @@ export const fetchUserHistory = async (userId) => {
   const res = await api.get(`/user-history/${userId}`);
   return res.data;
 };
+
+export const fetchAssessmentById = async (assessmentId) => {
+  const res = await api.get(`/assessment/${assessmentId}`);
+  return res.data;
+};
