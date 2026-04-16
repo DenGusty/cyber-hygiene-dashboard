@@ -1,13 +1,28 @@
-export default function DimensionCard({ dimension, score }) {
+export default function DimensionCard({
+  dimension,
+  score,
+  shortLabel,
+  weight,
+}) {
   let levelClass = "medium";
-  if (score < 50) levelClass = "high";
-  else if (score >= 70) levelClass = "low";
+  let label = "Moderate";
+
+  if (score < 50) {
+    levelClass = "high";
+    label = "Needs attention";
+  } else if (score >= 70) {
+    levelClass = "low";
+    label = "Good";
+  }
 
   return (
-    <div className="dimension-card card">
+    <div className="dimension-card card-lite">
       <div className="dimension-header">
-        <h3>{dimension}</h3>
-        <span className={`mini-badge ${levelClass}`}>{score}</span>
+        <div>
+          <p className="dimension-short">{shortLabel || dimension}</p>
+          <h4>{dimension}</h4>
+        </div>
+        <span className={`mini-badge ${levelClass}`}>{Math.round(score)}</span>
       </div>
 
       <div className="progress-bar">
@@ -17,13 +32,10 @@ export default function DimensionCard({ dimension, score }) {
         />
       </div>
 
-      <p className="dimension-note">
-        {score < 50
-          ? "Needs attention"
-          : score < 70
-          ? "Moderate"
-          : "Good"}
-      </p>
+      <div className="dimension-footer">
+        <p className="dimension-note">{label}</p>
+        <span className="dimension-weight">Weight: {weight}%</span>
+      </div>
     </div>
   );
 }

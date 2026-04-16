@@ -1,40 +1,95 @@
-.score-overview {
+.dashboard-page {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.score-circle {
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  border: 10px solid #d1d5db;
+.dashboard-hero {
+  display: grid;
+  grid-template-columns: 1.5fr 0.9fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.hero-copy h2 {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.hero-meta,
+.hero-text,
+.section-intro,
+.priority-question,
+.dimension-short,
+.dimension-note,
+.score-caption,
+.question-text,
+.rec-order {
+  color: #627d98;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.75fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.main-stack,
+.sidebar-stack,
+.recommendation-list,
+.priority-list,
+.quick-facts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.score-overview {
+  height: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  font-weight: bold;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #d9e2ec;
 }
 
 .score-badge,
 .mini-badge,
-.severity-tag {
-  display: inline-block;
-  padding: 6px 10px;
+.severity-tag,
+.change-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
-  font-size: 13px;
-  font-weight: bold;
+  font-weight: 700;
+}
+
+.score-badge {
+  padding: 8px 14px;
+  margin-bottom: 14px;
 }
 
 .score-badge.high,
 .mini-badge.high,
 .severity-tag.critical {
   background: #fee2e2;
-  color: #991b1b;
+  color: #b91c1c;
 }
 
 .score-badge.medium,
-.mini-badge.medium {
+.mini-badge.medium,
+.severity-tag.improve {
   background: #fef3c7;
   color: #92400e;
 }
@@ -45,25 +100,95 @@
   color: #166534;
 }
 
+.score-circle {
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  font-weight: 800;
+  background: #eff6ff;
+  border: 10px solid #dbeafe;
+}
+
+.score-circle.high {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.score-circle.medium {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.score-circle.low {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.priority-item,
+.recommendation-item {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid #d9e2ec;
+  background: #f8fafc;
+}
+
+.priority-topline,
+.recommendation-title-row,
+.dimension-header,
+.dimension-footer,
+.expand-btn,
+.quick-fact-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.priority-topline h4,
+.recommendation-title-row h4,
+.dimension-header h4,
+.quick-fact-item strong {
+  margin-bottom: 0;
+}
+
+.priority-topline p,
+.recommendation-title-row p,
+.quick-fact-item span,
+.dimension-weight,
+.summary-label,
+.expand-copy p,
+.dimension-score-inline {
+  margin-bottom: 0;
+  color: #627d98;
+}
+
+.priority-index {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #dbeafe;
+  font-weight: 800;
+}
+
 .dimension-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
-.dimension-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
 .progress-bar {
+  width: 100%;
   height: 10px;
-  background: #e5e7eb;
   border-radius: 999px;
+  background: #e2e8f0;
   overflow: hidden;
-  margin: 14px 0 8px;
+  margin: 16px 0 12px;
 }
 
 .progress-fill {
@@ -72,7 +197,7 @@
 }
 
 .progress-fill.high {
-  background: #dc2626;
+  background: #ef4444;
 }
 
 .progress-fill.medium {
@@ -80,65 +205,109 @@
 }
 
 .progress-fill.low {
-  background: #16a34a;
+  background: #22c55e;
 }
 
-.expand-btn {
-  width: 100%;
-  background: transparent;
-  border: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-align: left;
-  cursor: pointer;
-  font-size: 16px;
-  padding: 0;
+.mini-badge {
+  min-width: 50px;
+  padding: 8px 12px;
 }
 
-.recommendation-item {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
-}
-
-.recommendation-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.severity-tag.improve {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.summary-grid {
+.summary-grid,
+.comparison-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 
-.summary-grid div {
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: 14px;
+.summary-grid > div,
+.comparison-grid > div {
+  padding: 18px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid #d9e2ec;
 }
 
-.summary-label {
+.summary-grid strong,
+.comparison-grid strong {
   display: block;
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 8px;
+  margin-top: 8px;
+  font-size: 1.35rem;
 }
 
-.section-header {
+.recommendation-group .expand-btn {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  align-items: flex-start;
+}
+
+.expand-symbol {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.recommendation-items {
+  margin-top: 18px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chart-card,
+.quick-facts-card {
+  position: sticky;
+  top: 96px;
+}
+
+.radar-wrapper {
+  min-height: 320px;
+}
+
+.empty-state {
+  text-align: center;
 }
 
 .text-link {
-  color: #2563eb;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-hero,
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card,
+  .quick-facts-card {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .dimension-grid,
+  .summary-grid,
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .score-overview,
+  .priority-topline,
+  .recommendation-title-row,
+  .dimension-header,
+  .dimension-footer,
+  .quick-fact-item,
+  .expand-btn {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .score-circle {
+    width: 110px;
+    height: 110px;
+    font-size: 1.7rem;
+  }
 }

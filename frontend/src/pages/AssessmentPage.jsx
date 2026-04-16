@@ -60,7 +60,7 @@ export default function AssessmentPage() {
 
     const unanswered = questions.filter((q) => answers[q.id] === undefined);
     if (unanswered.length > 0) {
-      setError("Please answer all questions before submitting.");
+      setError("Please complete all questions before submitting your assessment.");
       return;
     }
 
@@ -97,7 +97,7 @@ export default function AssessmentPage() {
         </p>
       </section>
 
-      {error && <div className="error-box">{error}</div>}
+      
 
       {Object.entries(groupedQuestions).map(([dimension, items]) => (
         <section key={dimension} className="dimension-section card">
@@ -131,9 +131,15 @@ export default function AssessmentPage() {
           </div>
         </section>
       ))}
+      
+      {error && <div className="error-box">{error}</div>}
 
       <div className="submit-row">
-        <button onClick={handleSubmit} disabled={submitting} className="primary-btn">
+        <button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="primary-btn submit-btn"
+        >
           {submitting ? "Submitting..." : "Submit Assessment"}
         </button>
       </div>

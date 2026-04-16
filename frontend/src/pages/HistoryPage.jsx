@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchUserHistory } from "../api/assessmentApi";
 import {
   ResponsiveContainer,
@@ -13,6 +14,33 @@ import {
 import "../styles/history.css";
 
 const USER_ID = 1;
+
+const SHORT_NAMES = {
+  "Authentication & Account Security": "Authentication",
+  "Phishing & Social Engineering": "Phishing",
+  "Patch & Update Hygiene": "Updates",
+  "Device Protection & Secure Configuration": "Device",
+  "Network Hygiene": "Network",
+  "Data Protection & Privacy": "Data",
+};
+
+function ChangeBadge({ value }) {
+  const numericValue = Number(value || 0);
+  const cls =
+    numericValue > 0
+      ? "positive"
+      : numericValue < 0
+      ? "negative"
+      : "neutral";
+  const prefix = numericValue > 0 ? "+" : "";
+
+  return (
+    <span className={`change-badge ${cls}`}>
+      {prefix}
+      {numericValue}
+    </span>
+  );
+}
 
 export default function HistoryPage() {
   const [historyData, setHistoryData] = useState(null);
@@ -33,87 +61,201 @@ export default function HistoryPage() {
     loadHistory();
   }, []);
 
-  if (loading) return <p>Loading history...</p>;
+  const comparison = historyData?.latest_comparison;
+  const latest = historyData?.history?.[historyData.history.length - 1] ?? null;
 
-  if (!historyData) return <p>No history data found.</p>;
+  const chartData = useMemo(() => {
+    if (!comparison) return [];
 
-  const comparison = historyData.latest_comparison;
-
-  const chartData = comparison
-    ? Object.entries(comparison.dimension_changes).map(([dimension, values]) => ({
-        dimension:
-          dimension.length > 20 ? `${dimension.slice(0, 20)}...` : dimension,
+    return Object.entries(comparison.dimension_changes).map(
+      ([dimension, values]) => ({
+        dimension: SHORT_NAMES[dimension] || dimension,
+        fullDimension: dimension,
         previous: values.previous_score,
         current: values.current_score,
-      }))
-    : [];
+        change: values.change,
+      })
+    );
+  }, [comparison]);
+
+  if (loading) return <p className="page-feedback">Loading history...</p>;
+  if (!historyData)
+    return <p className="page-feedback error">No history data found.</p>;
 
   return (
     <div className="history-page">
-      <section className="card">
-        <h2>Assessment History</h2>
-        <p>Total assessments: {historyData.total_assessments}</p>
+      <section className="history-hero card">
+        <div>
+          <p className="eyebrow">Progress Tracking</p>
+          <h2>Track improvement across repeated assessments</h2>
+          <p className="hero-text">
+            Your history matters because one assessment is only a snapshot. The
+            real value is whether your behaviour changes over time.
+          </p>
+        </div>
 
-        <div className="history-list">
-          {historyData.history.map((item) => (
-            <div key={item.assessment_id} className="history-item">
-              <div>
-                <strong>Assessment #{item.assessment_id}</strong>
-                <p>{new Date(item.created_at).toLocaleString()}</p>
-              </div>
-              <div>
-                <p>Score: {item.overall_score}</p>
-                <p>{item.risk_level}</p>
-              </div>
-            </div>
-          ))}
+        <div className="hero-actions">
+          <Link to="/" className="btn btn-primary">
+            New Assessment
+          </Link>
         </div>
       </section>
 
-      {comparison && (
-        <>
-          <section className="card comparison-card">
-            <h2>Latest Comparison</h2>
-            <div className="comparison-grid">
+      <section className="kpi-grid">
+        <article className="card kpi-card">
+          <span>Total assessments</span>
+          <strong>{historyData.total_assessments}</strong>
+        </article>
+
+        <article className="card kpi-card">
+          <span>Latest score</span>
+          <strong>{latest?.overall_score ?? "N/A"}</strong>
+        </article>
+
+        <article className="card kpi-card">
+          <span>Current risk level</span>
+          <strong>{latest?.risk_level ?? "N/A"}</strong>
+        </article>
+
+        <article className="card kpi-card">
+          <span>Latest change</span>
+          <strong>
+            {comparison ? <ChangeBadge value={comparison.overall_change} /> : "N/A"}
+          </strong>
+        </article>
+      </section>
+
+      <section className="history-layout">
+        <div className="history-main">
+          <section className="card">
+            <div className="section-header">
               <div>
-                <span>Previous Score</span>
-                <strong>{comparison.previous_overall_score}</strong>
+                <p className="eyebrow">Timeline</p>
+                <h3>Assessment History</h3>
               </div>
-              <div>
-                <span>Current Score</span>
-                <strong>{comparison.current_overall_score}</strong>
-              </div>
-              <div>
-                <span>Overall Change</span>
-                <strong>{comparison.overall_change}</strong>
-              </div>
-              <div>
-                <span>Risk Level Change</span>
-                <strong>
-                  {comparison.previous_risk_level} → {comparison.current_risk_level}
-                </strong>
-              </div>
+            </div>
+
+            <div className="history-list">
+              {historyData.history.map((item) => (
+                <div key={item.assessment_id} className="history-item">
+                  <div>
+                    <strong>Assessment #{item.assessment_id}</strong>
+                    <p>{new Date(item.created_at).toLocaleString()}</p>
+                  </div>
+                  <div className="history-item-right">
+                    <p>Score: {item.overall_score}</p>
+                    <p>{item.risk_level}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
 
-          <section className="card chart-card">
-            <h2>Dimension Comparison</h2>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={360}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="dimension" />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="previous" name="Previous" />
-                  <Bar dataKey="current" name="Current" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
-        </>
-      )}
+          {comparison && (
+            <section className="card chart-card">
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow">Dimension Comparison</p>
+                  <h3>Previous vs Current Scores</h3>
+                </div>
+              </div>
+
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height={380}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="dimension" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip
+                      formatter={(value, name) => [value, name]}
+                      labelFormatter={(label, payload) =>
+                        payload?.[0]?.payload?.fullDimension || label
+                      }
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="previous"
+                      name="Previous"
+                      fill="#94a3b8"
+                      radius={[6, 6, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="current"
+                      name="Current"
+                      fill="#3b82f6"
+                      radius={[6, 6, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          )}
+        </div>
+
+        <aside className="history-sidebar">
+          {comparison && (
+            <section className="card comparison-card">
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow">Latest Comparison</p>
+                  <h3>Change Summary</h3>
+                </div>
+              </div>
+
+              <div className="comparison-grid comparison-summary-grid">
+                <div className="comparison-summary-item">
+                  <span>Previous Score</span>
+                  <strong>{comparison.previous_overall_score}</strong>
+                </div>
+
+                <div className="comparison-summary-item">
+                  <span>Current Score</span>
+                  <strong>{comparison.current_overall_score}</strong>
+                </div>
+
+                <div className="comparison-summary-item">
+                  <span>Overall Change</span>
+                  <strong>
+                    <ChangeBadge value={comparison.overall_change} />
+                  </strong>
+                </div>
+
+                <div className="comparison-summary-item risk-level-item">
+                  <span>Risk Level Change</span>
+                  <strong>
+                    {comparison.previous_risk_level} → {comparison.current_risk_level}
+                  </strong>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {comparison && (
+            <section className="card">
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow">Dimension Movement</p>
+                  <h3>Per-dimension change</h3>
+                </div>
+              </div>
+
+              <div className="movement-list">
+                {Object.entries(comparison.dimension_changes)
+                  .sort(([, a], [, b]) => b.change - a.change)
+                  .map(([dimension, values]) => (
+                    <div key={dimension} className="movement-item">
+                      <div>
+                        <strong>{SHORT_NAMES[dimension] || dimension}</strong>
+                        <p>{dimension}</p>
+                      </div>
+                      <ChangeBadge value={values.change} />
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )}
+        </aside>
+      </section>
     </div>
   );
 }
