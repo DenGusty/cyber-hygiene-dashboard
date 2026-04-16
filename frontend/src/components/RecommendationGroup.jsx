@@ -10,19 +10,26 @@ export default function RecommendationGroup({
   return (
     <div className="recommendation-group card">
       <button className="expand-btn" onClick={() => setOpen(!open)}>
-        <div className="expand-copy">
-          <h3>{group.dimension}</h3>
+        <div>
+          <div className="recommendation-group-title-row">
+            <h3>{group.dimension}</h3>
+            <span className={`severity-tag ${group.highest_level}`}>
+              {group.highest_level}
+            </span>
+          </div>
+
           <p>
-            {group.count} issue{group.count > 1 ? "s" : ""} · highest level:{" "}
-            <strong>{group.highest_level}</strong>
-            {typeof dimensionScore === "number" && (
-              <span className="dimension-score-inline">
-                {" "}· score {Math.round(dimensionScore)}
-              </span>
+            {group.count} issue{group.count > 1 ? "s" : ""}
+            {dimensionScore !== undefined && (
+              <>
+                {" "}
+                · score: <strong>{Math.round(Number(dimensionScore))}</strong>
+              </>
             )}
           </p>
         </div>
-        <span className="expand-symbol">{open ? "−" : "+"}</span>
+
+        <span className="expand-icon">{open ? "−" : "+"}</span>
       </button>
 
       {open && (
@@ -31,9 +38,10 @@ export default function RecommendationGroup({
             <div key={item.question_id} className="recommendation-item">
               <div className="recommendation-title-row">
                 <div>
-                  <p className="rec-order">Priority {index + 1}</p>
+                  <p className="recommendation-index">Action {index + 1}</p>
                   <h4>{item.title}</h4>
                 </div>
+
                 <span className={`severity-tag ${item.level}`}>{item.level}</span>
               </div>
 

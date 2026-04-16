@@ -1,4 +1,4 @@
-export default function ScoreOverview({ score, riskLevel, compact = false }) {
+export default function ScoreOverview({ score, riskLevel, createdAt }) {
   const rounded = Math.round(score);
 
   let statusClass = "medium";
@@ -6,14 +6,22 @@ export default function ScoreOverview({ score, riskLevel, compact = false }) {
   if (rounded >= 71) statusClass = "low";
 
   return (
-    <section className={`score-overview ${compact ? "compact" : ""}`}>
+    <section className="score-overview card">
       <div className="score-left">
-        <p className="eyebrow">Overall Result</p>
-        <h3>Risk Score Overview</h3>
+        <p className="eyebrow">Latest Assessment</p>
+        <h2>Risk Score Overview</h2>
         <div className={`score-badge ${statusClass}`}>{riskLevel}</div>
+
         <p className="score-caption">
-          This score reflects the overall cyber hygiene level from your latest assessment.
+          This score reflects your current overall cyber hygiene level based on
+          the latest completed assessment.
         </p>
+
+        {createdAt && (
+          <p className="score-meta">
+            Completed on {new Date(createdAt).toLocaleString()}
+          </p>
+        )}
       </div>
 
       <div className="score-right">

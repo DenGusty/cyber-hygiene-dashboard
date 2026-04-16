@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { fetchUserHistory } from "../api/assessmentApi";
 import {
   ResponsiveContainer,
@@ -45,6 +45,7 @@ function ChangeBadge({ value }) {
 export default function HistoryPage() {
   const [historyData, setHistoryData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -77,6 +78,17 @@ export default function HistoryPage() {
       })
     );
   }, [comparison]);
+
+  const handleHistoryClick = (assessmentId) => {
+    navigate(`/dashboard/${assessmentId}`);
+  };
+
+  const handleHistoryKeyDown = (event, assessmentId) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      navigate(`/dashboard/${assessmentId}`);
+    }
+  };
 
   if (loading) return <p className="page-feedback">Loading history...</p>;
   if (!historyData)
@@ -137,11 +149,21 @@ export default function HistoryPage() {
 
             <div className="history-list">
               {historyData.history.map((item) => (
-                <div key={item.assessment_id} className="history-item">
-                  <div>
+                <div
+                  key={item.assessment_id}
+                  className="history-item history-item-clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleHistoryClick(item.assessment_id)}
+                  onKeyDown={(event) =>
+                    handleHistoryKeyDown(event, item.assessment_id)
+                  }
+                >
+                  <div className="history-item-left">
                     <strong>Assessment #{item.assessment_id}</strong>
                     <p>{new Date(item.created_at).toLocaleString()}</p>
                   </div>
+
                   <div className="history-item-right">
                     <p>Score: {item.overall_score}</p>
                     <p>{item.risk_level}</p>

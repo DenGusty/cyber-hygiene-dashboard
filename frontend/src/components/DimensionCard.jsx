@@ -1,41 +1,42 @@
 export default function DimensionCard({
   dimension,
   score,
-  shortLabel,
   weight,
+  isWeakest = false,
 }) {
   let levelClass = "medium";
-  let label = "Moderate";
+  let levelText = "Moderate";
 
   if (score < 50) {
     levelClass = "high";
-    label = "Needs attention";
+    levelText = "Needs attention";
   } else if (score >= 70) {
     levelClass = "low";
-    label = "Good";
+    levelText = "Good";
   }
 
   return (
-    <div className="dimension-card card-lite">
+    <div className={`dimension-card card ${isWeakest ? "weakest-card" : ""}`}>
       <div className="dimension-header">
         <div>
-          <p className="dimension-short">{shortLabel || dimension}</p>
-          <h4>{dimension}</h4>
+          <h3>{dimension}</h3>
+          <p className="dimension-weight">Weight: {weight}%</p>
         </div>
-        <span className={`mini-badge ${levelClass}`}>{Math.round(score)}</span>
+
+        <div className="dimension-score-wrap">
+          {isWeakest && <span className="weakest-tag">Lowest</span>}
+          <span className={`mini-badge ${levelClass}`}>{Math.round(score)}</span>
+        </div>
       </div>
 
       <div className="progress-bar">
         <div
-          className={`progress-fill ${levelClass}`}
+          className={`progress-fill-bar ${levelClass}`}
           style={{ width: `${score}%` }}
         />
       </div>
 
-      <div className="dimension-footer">
-        <p className="dimension-note">{label}</p>
-        <span className="dimension-weight">Weight: {weight}%</span>
-      </div>
+      <p className="dimension-note">{levelText}</p>
     </div>
   );
 }

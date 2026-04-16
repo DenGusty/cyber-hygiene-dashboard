@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchQuestions, submitAssessment } from "../api/assessmentApi";
 import { useNavigate } from "react-router-dom";
 import "../styles/assessment.css";
@@ -20,6 +20,8 @@ export default function AssessmentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  const questionRefs = useRef({});
 
   useEffect(() => {
     const loadQuestions = async () => {
@@ -46,11 +48,33 @@ export default function AssessmentPage() {
     return groups;
   }, [questions]);
 
+  const totalQuestions = questions.length;
+  const answeredCount = questions.filter(
+    (q) => answers[q.id] !== undefined
+  ).length;
+  const unansweredCount = totalQuestions - answeredCount;
+  const progressPercent =
+    totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+
+  const scrollToQuestion = (questionId) => {
+    const node = questionRefs.current[questionId];
+    if (!node) return;
+
+    const y = node.getBoundingClientRect().top + window.pageYOffset - 140;
+
+    window.scrollTo({
+      top: y,
+      behavior: "smooth",
+    });
+  };
+
   const handleAnswerChange = (questionId, value) => {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: Number(value),
     }));
+
+    if (error) setError("");
   };
 
   const handleSubmit = async () => {
@@ -59,8 +83,20 @@ export default function AssessmentPage() {
     if (questions.length === 0) return;
 
     const unanswered = questions.filter((q) => answers[q.id] === undefined);
+
     if (unanswered.length > 0) {
-      setError("Please complete all questions before submitting your assessment.");
+      const firstMissing = unanswered[0];
+
+      setError(
+        `You still have ${unanswered.length} unanswered question${
+          unanswered.length > 1 ? "s" : ""
+        }. Complete all questions before submitting your assessment.`
+      );
+
+      if (firstMissing) {
+        setTimeout(() => scrollToQuestion(firstMissing.id), 50);
+      }
+
       return;
     }
 
@@ -89,58 +125,150 @@ export default function AssessmentPage() {
 
   return (
     <div className="assessment-page">
-      <section className="page-intro card">
-        <h2>Cyber Hygiene Assessment</h2>
-        <p>
-          Complete all 24 questions to generate your overall score, dimension
-          breakdown, personalised recommendations, and future comparison data.
-        </p>
+      <section className="assessment-hero card">
+        <div className="assessment-hero-top">
+          <div>
+            <p className="eyebrow">Assessment</p>
+            <h2>Cyber Hygiene Assessment</h2>
+            <p className="assessment-hero-text">
+              Complete all 24 questions to generate your overall score,
+              dimension breakdown, personalised recommendations, and future
+              comparison data.
+            </p>
+          </div>
+
+          <div className="assessment-progress-summary">
+            <span className="progress-pill">
+              {answeredCount}/{totalQuestions} answered
+            </span>
+            <strong>{progressPercent}% complete</strong>
+          </div>
+        </div>
+
+        <div className="progress-block">
+          <div className="progress-meta">
+            <span>Progress</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <div className="progress-track">
+            <div
+              className="progress-fill"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
       </section>
 
-      
-
-      {Object.entries(groupedQuestions).map(([dimension, items]) => (
-        <section key={dimension} className="dimension-section card">
-          <h3>{dimension}</h3>
-
-          <div className="question-list">
-            {items.map((q) => (
-              <div key={q.id} className="question-card">
-                <p className="question-text">
-                  <strong>Q{q.id}.</strong> {q.text}
-                </p>
-
-                <div className="scale-options">
-                  {SCALE_OPTIONS.map((option) => (
-                    <label key={option.value} className="radio-option">
-                      <input
-                        type="radio"
-                        name={`question-${q.id}`}
-                        value={option.value}
-                        checked={answers[q.id] === option.value}
-                        onChange={(e) =>
-                          handleAnswerChange(q.id, e.target.value)
-                        }
-                      />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
-      
       {error && <div className="error-box">{error}</div>}
 
-      <div className="submit-row">
+      {Object.entries(groupedQuestions).map(([dimension, items]) => {
+        const completedInSection = items.filter(
+          (q) => answers[q.id] !== undefined
+        ).length;
+        const sectionComplete = completedInSection === items.length;
+
+        return (
+          <section key={dimension} className="dimension-section card">
+            <div className="dimension-section-header">
+              <div>
+                <div className="section-title-row">
+                  <h3>{dimension}</h3>
+                  {sectionComplete && (
+                    <span className="section-status complete">Completed</span>
+                  )}
+                </div>
+
+                <p className="dimension-section-subtext">
+                  Answer all questions in this category to complete the section.
+                </p>
+              </div>
+
+              <div className="section-progress-pill">
+                {completedInSection}/{items.length}
+              </div>
+            </div>
+
+            <div className="question-list">
+              {items.map((q) => {
+                const isAnswered = answers[q.id] !== undefined;
+
+                return (
+                  <div
+                    key={q.id}
+                    ref={(el) => {
+                      questionRefs.current[q.id] = el;
+                    }}
+                    className={`question-card ${
+                      isAnswered ? "answered" : "unanswered"
+                    }`}
+                  >
+                    <div className="question-top-row">
+                      <p className="question-text">
+                        <strong>Q{q.id}.</strong> {q.text}
+                      </p>
+
+                      <span
+                        className={`question-status ${
+                          isAnswered ? "answered" : "pending"
+                        }`}
+                      >
+                        {isAnswered ? "Answered" : "Pending"}
+                      </span>
+                    </div>
+
+                    <div className="scale-options">
+                      {SCALE_OPTIONS.map((option) => {
+                        const checked = answers[q.id] === option.value;
+
+                        return (
+                          <label
+                            key={option.value}
+                            className={`radio-option ${
+                              checked ? "selected" : ""
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`question-${q.id}`}
+                              value={option.value}
+                              checked={checked}
+                              onChange={(e) =>
+                                handleAnswerChange(q.id, e.target.value)
+                              }
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+
+      <div className="sticky-submit-bar">
+        <div className="sticky-submit-info">
+          <strong>{answeredCount} completed</strong>
+          <span>
+            {unansweredCount === 0
+              ? "All questions answered. Ready to submit."
+              : `${unansweredCount} question${
+                  unansweredCount > 1 ? "s" : ""
+                } remaining`}
+          </span>
+        </div>
+
         <button
           onClick={handleSubmit}
           disabled={submitting}
           className="primary-btn submit-btn"
         >
-          {submitting ? "Submitting..." : "Submit Assessment"}
+          {submitting
+            ? "Submitting..."
+            : "Submit Assessment"}
         </button>
       </div>
     </div>
