@@ -11,7 +11,6 @@ const SCALE_OPTIONS = [
   { label: "Always", value: 4 },
 ];
 
-const USER_ID = 1;
 
 export default function AssessmentPage() {
   const [questions, setQuestions] = useState([]);
@@ -101,7 +100,6 @@ export default function AssessmentPage() {
     }
 
     const payload = {
-      user_id: USER_ID,
       answers: questions.map((q) => ({
         question_id: q.id,
         answer: answers[q.id],

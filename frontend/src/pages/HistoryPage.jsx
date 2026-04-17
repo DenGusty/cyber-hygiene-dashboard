@@ -13,8 +13,6 @@ import {
 } from "recharts";
 import "../styles/history.css";
 
-const USER_ID = 1;
-
 const SHORT_NAMES = {
   "Authentication & Account Security": "Authentication",
   "Phishing & Social Engineering": "Phishing",
@@ -45,15 +43,21 @@ function ChangeBadge({ value }) {
 export default function HistoryPage() {
   const [historyData, setHistoryData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const data = await fetchUserHistory(USER_ID);
+        setLoading(true);
+        setError("");
+        const data = await fetchUserHistory();
         setHistoryData(data);
       } catch (err) {
         console.error("Failed to fetch history:", err);
+        setError(
+          err.response?.data?.detail || "Failed to load history data."
+        );
       } finally {
         setLoading(false);
       }
@@ -91,6 +95,7 @@ export default function HistoryPage() {
   };
 
   if (loading) return <p className="page-feedback">Loading history...</p>;
+  if (error) return <p className="page-feedback error">{error}</p>;
   if (!historyData)
     return <p className="page-feedback error">No history data found.</p>;
 
@@ -160,7 +165,7 @@ export default function HistoryPage() {
                   }
                 >
                   <div className="history-item-left">
-                    <strong>Assessment #{item.assessment_id}</strong>
+                    <strong>Assessment {item.assessment_number}</strong>
                     <p>{new Date(item.created_at).toLocaleString()}</p>
                   </div>
 

@@ -1,8 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from decimal import Decimal
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from datetime import datetime, timedelta
 import models
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -19,6 +23,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+SECRET_KEY = "change-this-to-a-long-random-secret"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+
+pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
 
 # ----------------------------
 # Database dependency
@@ -40,8 +52,24 @@ class AnswerItem(BaseModel):
 
 
 class AssessmentSubmission(BaseModel):
-    user_id: int
     answers: list[AnswerItem]
+
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user_id: int
+    email: EmailStr
 
 
 # ----------------------------
@@ -65,6 +93,48 @@ def to_float(value):
     return float(value)
 
 
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (
+        expires_delta if expires_delta else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(models.User).filter(models.User.id == int(user_id)).first()
+    if not user:
+        raise credentials_exception
+
+    return user
+
+
 DIMENSION_WEIGHTS = {
     "Authentication & Account Security": 0.25,
     "Phishing & Social Engineering": 0.20,
@@ -73,6 +143,7 @@ DIMENSION_WEIGHTS = {
     "Network Hygiene": 0.12,
     "Data Protection & Privacy": 0.10
 }
+
 QUESTION_RECOMMENDATIONS = {
     1: {
         "title": "Avoid password reuse",
@@ -370,7 +441,6 @@ QUESTION_RECOMMENDATIONS = {
 }
 
 
-
 # ----------------------------
 # GET /questions
 # ----------------------------
@@ -393,7 +463,11 @@ def get_questions(db: Session = Depends(get_db)):
 # POST /submit-assessment
 # ----------------------------
 @app.post("/submit-assessment")
-def submit_assessment(data: AssessmentSubmission, db: Session = Depends(get_db)):
+def submit_assessment(
+    data: AssessmentSubmission,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     if not data.answers:
         raise HTTPException(status_code=400, detail="No answers submitted.")
 
@@ -416,7 +490,6 @@ def submit_assessment(data: AssessmentSubmission, db: Session = Depends(get_db))
                 detail=f"Question with id {item.question_id} not found."
             )
 
-        # Reverse scoring
         final_score = 4 - item.answer if question.reverse_scored else item.answer
 
         processed_answers.append({
@@ -432,14 +505,12 @@ def submit_assessment(data: AssessmentSubmission, db: Session = Depends(get_db))
         dimension_totals[question.dimension] += final_score
         dimension_counts[question.dimension] += 1
 
-    # Calculate dimension scores
     dimension_scores = {}
     for dimension, total in dimension_totals.items():
         count = dimension_counts[dimension]
         normalized_score = (total / (count * 4)) * 100
         dimension_scores[dimension] = round(normalized_score, 2)
 
-    # Calculate overall weighted score
     overall_score = 0
     for dimension, score in dimension_scores.items():
         weight = DIMENSION_WEIGHTS.get(dimension, 0)
@@ -448,17 +519,16 @@ def submit_assessment(data: AssessmentSubmission, db: Session = Depends(get_db))
     overall_score = round(overall_score, 2)
     risk_level = calculate_risk_level(overall_score)
 
-    # Save assessment
     new_assessment = models.Assessment(
-        user_id=data.user_id,
+        user_id=current_user.id,
         overall_score=overall_score,
         risk_level=risk_level
     )
+
     db.add(new_assessment)
     db.commit()
     db.refresh(new_assessment)
 
-    # Save responses
     for item in processed_answers:
         response = models.Response(
             assessment_id=new_assessment.id,
@@ -467,7 +537,6 @@ def submit_assessment(data: AssessmentSubmission, db: Session = Depends(get_db))
         )
         db.add(response)
 
-    # Save dimension scores
     for dimension, score in dimension_scores.items():
         ds = models.DimensionScore(
             assessment_id=new_assessment.id,
@@ -487,17 +556,17 @@ def submit_assessment(data: AssessmentSubmission, db: Session = Depends(get_db))
 
 
 # ----------------------------
-# GET /user-history/{user_id}
-# Returns:
-# 1. all assessment history
-# 2. dimension scores for each assessment
-# 3. latest comparison if there are at least 2 assessments
+# GET /user-history
+# token-based current user history
 # ----------------------------
-@app.get("/user-history/{user_id}")
-def get_user_history(user_id: int, db: Session = Depends(get_db)):
+@app.get("/user-history")
+def get_user_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     assessments = (
         db.query(models.Assessment)
-        .filter(models.Assessment.user_id == user_id)
+        .filter(models.Assessment.user_id == current_user.id)
         .order_by(models.Assessment.created_at.asc(), models.Assessment.id.asc())
         .all()
     )
@@ -507,7 +576,7 @@ def get_user_history(user_id: int, db: Session = Depends(get_db)):
 
     history = []
 
-    for assessment in assessments:
+    for index, assessment in enumerate(assessments, start=1):
         dimension_rows = (
             db.query(models.DimensionScore)
             .filter(models.DimensionScore.assessment_id == assessment.id)
@@ -517,10 +586,11 @@ def get_user_history(user_id: int, db: Session = Depends(get_db)):
         dimension_scores = {
             row.dimension: round(to_float(row.score), 2)
             for row in dimension_rows
-        }
+        } 
 
         history.append({
             "assessment_id": assessment.id,
+            "assessment_number": index,
             "overall_score": round(to_float(assessment.overall_score), 2),
             "risk_level": assessment.risk_level,
             "created_at": assessment.created_at,
@@ -553,6 +623,8 @@ def get_user_history(user_id: int, db: Session = Depends(get_db)):
         latest_comparison = {
             "previous_assessment_id": previous["assessment_id"],
             "current_assessment_id": current["assessment_id"],
+            "previous_assessment_number": previous["assessment_number"],
+            "current_assessment_number": current["assessment_number"],
             "previous_overall_score": previous["overall_score"],
             "current_overall_score": current["overall_score"],
             "overall_change": overall_change,
@@ -562,17 +634,25 @@ def get_user_history(user_id: int, db: Session = Depends(get_db)):
         }
 
     return {
-        "user_id": user_id,
+        "user_id": current_user.id,
         "total_assessments": len(history),
         "history": history,
         "latest_comparison": latest_comparison
     }
 
+
 @app.get("/assessment/{assessment_id}")
-def get_assessment(assessment_id: int, db: Session = Depends(get_db)):
+def get_assessment(
+    assessment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     assessment = (
         db.query(models.Assessment)
-        .filter(models.Assessment.id == assessment_id)
+        .filter(
+            models.Assessment.id == assessment_id,
+            models.Assessment.user_id == current_user.id
+        )
         .first()
     )
 
@@ -598,16 +678,23 @@ def get_assessment(assessment_id: int, db: Session = Depends(get_db)):
         "created_at": assessment.created_at,
         "dimension_scores": dimension_scores
     }
+
 # --------------------------------------------------
 # GET /recommendations/{assessment_id}
 # grouped + question-level recommendation API
 # --------------------------------------------------
 @app.get("/recommendations/{assessment_id}")
-def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
-
+def get_recommendations(
+    assessment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     assessment = (
         db.query(models.Assessment)
-        .filter(models.Assessment.id == assessment_id)
+        .filter(
+            models.Assessment.id == assessment_id,
+            models.Assessment.user_id == current_user.id
+        )
         .first()
     )
 
@@ -623,9 +710,6 @@ def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
 
     flat_recommendations = []
 
-    # ----------------------------
-    # Question-level trigger
-    # ----------------------------
     for response, question in response_rows:
         score = int(response.score)
 
@@ -651,9 +735,6 @@ def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
             "recommendations": rec_config[level]
         })
 
-    # ----------------------------
-    # Sort: dimension + severity
-    # ----------------------------
     severity_order = {
         "critical": 0,
         "improve": 1
@@ -667,9 +748,6 @@ def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
         )
     )
 
-    # ----------------------------
-    # Group by dimension
-    # ----------------------------
     grouped = {}
 
     for item in flat_recommendations:
@@ -683,7 +761,6 @@ def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
                 "items": []
             }
 
-        # update highest severity
         if item["level"] == "critical":
             grouped[dimension]["highest_level"] = "critical"
 
@@ -698,9 +775,6 @@ def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
 
         grouped[dimension]["count"] += 1
 
-    # ----------------------------
-    # Keep fixed dimension order
-    # ----------------------------
     dimension_order = [
         "Authentication & Account Security",
         "Phishing & Social Engineering",
@@ -716,9 +790,6 @@ def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
         if d in grouped
     ]
 
-    # ----------------------------
-    # Summary stats
-    # ----------------------------
     critical_count = sum(
         1 for x in flat_recommendations if x["level"] == "critical"
     )
@@ -727,22 +798,76 @@ def get_recommendations(assessment_id: int, db: Session = Depends(get_db)):
         1 for x in flat_recommendations if x["level"] == "improve"
     )
 
-    # ----------------------------
-    # Final response
-    # ----------------------------
     return {
         "assessment_id": assessment_id,
         "overall_score": round(float(assessment.overall_score), 2),
         "risk_level": assessment.risk_level,
-
         "has_recommendations": len(grouped_list) > 0,
-
         "summary": {
             "critical_count": critical_count,
             "improve_count": improve_count,
             "total_issues": len(flat_recommendations),
             "affected_dimensions": len(grouped_list)
         },
-
         "recommendation_groups": grouped_list
+    }
+
+@app.post("/register", response_model=TokenResponse)
+def register(data: UserRegister, db: Session = Depends(get_db)):
+    existing_user = db.query(models.User).filter(models.User.email == data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered.")
+
+    if len(data.password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 6 characters."
+        )
+
+    if len(data.password) > 128:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be no more than 128 characters."
+        )
+
+    new_user = models.User(
+        email=data.email,
+        password_hash=hash_password(data.password)
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    access_token = create_access_token({"sub": str(new_user.id)})
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": new_user.id,
+        "email": new_user.email
+    }
+
+
+@app.post("/login", response_model=TokenResponse)
+def login(data: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == data.email).first()
+
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+    access_token = create_access_token({"sub": str(user.id)})
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "email": user.email
+    }
+
+
+@app.get("/me")
+def get_me(current_user: models.User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email
     }
