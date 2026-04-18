@@ -76,9 +76,9 @@ class TokenResponse(BaseModel):
 # Helper functions
 # ----------------------------
 def calculate_risk_level(score: float) -> str:
-    if score <= 40:
+    if score <= 50:
         return "High Risk"
-    elif score <= 70:
+    elif score <= 75:
         return "Medium Risk"
     else:
         return "Low Risk"

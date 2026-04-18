@@ -7,10 +7,10 @@ export default function DimensionCard({
   let levelClass = "medium";
   let levelText = "Moderate";
 
-  if (score < 50) {
+  if (score <= 50) {
     levelClass = "high";
     levelText = "Needs attention";
-  } else if (score >= 70) {
+  } else if (score >= 76) {
     levelClass = "low";
     levelText = "Good";
   }

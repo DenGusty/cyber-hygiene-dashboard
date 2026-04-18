@@ -2,8 +2,8 @@ export default function ScoreOverview({ score, riskLevel, createdAt }) {
   const rounded = Math.round(score);
 
   let statusClass = "medium";
-  if (rounded <= 40) statusClass = "high";
-  if (rounded >= 71) statusClass = "low";
+  if (rounded <= 50) statusClass = "high";
+  if (rounded >= 76) statusClass = "low";
 
   return (
     <section className="score-overview card">
