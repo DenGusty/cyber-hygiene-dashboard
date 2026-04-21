@@ -9,6 +9,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import models
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import case
 
 # python -m uvicorn main:app --reload
 
@@ -170,17 +171,17 @@ QUESTION_RECOMMENDATIONS = {
         ]
     },
     3: {
-        "title": "Strengthen password length",
-        "critical": [
-            "Use longer passwords or passphrases for important accounts.",
-            "Avoid short and predictable passwords.",
-            "Update weak passwords on email, banking, and cloud accounts first."
-        ],
-        "improve": [
-            "Increase password length on your most sensitive accounts.",
-            "Replace medium-strength passwords with longer passphrases."
-        ]
-    },
+    "title": "Use unique passwords for important accounts",
+    "critical": [
+        "Stop reusing passwords on important accounts immediately.",
+        "Use a different password for your email, banking, and other high-value accounts.",
+        "Use a password manager to help create and store unique passwords."
+    ],
+    "improve": [
+        "Start replacing reused passwords on your most important accounts first.",
+        "Make sure at least your email and financial accounts use unique passwords."
+    ]
+},
     4: {
         "title": "Enable two-factor authentication",
         "critical": [
@@ -316,18 +317,6 @@ QUESTION_RECOMMENDATIONS = {
             "Prioritise official app stores and trusted vendors."
         ]
     },
-    15: {
-        "title": "Use antivirus or built-in protection",
-        "critical": [
-            "Enable antivirus or built-in device security protection.",
-            "Do not leave your device without any active security protection.",
-            "Check that protection tools are turned on and updated."
-        ],
-        "improve": [
-            "Review whether your current protection is enabled and working properly.",
-            "Make sure built-in or third-party security protection stays active."
-        ]
-    },
     16: {
         "title": "Review application permissions",
         "critical": [
@@ -353,18 +342,6 @@ QUESTION_RECOMMENDATIONS = {
             "Use safer alternatives for logins and financial tasks when away from home."
         ]
     },
-    18: {
-        "title": "Check for HTTPS before entering credentials",
-        "critical": [
-            "Check that websites use HTTPS before entering credentials or personal information.",
-            "Do not sign in on websites with insecure or suspicious connection indicators.",
-            "Be especially careful on pages reached through links in emails or messages."
-        ],
-        "improve": [
-            "Verify HTTPS more consistently before entering credentials.",
-            "Pay closer attention to browser security indicators on login pages."
-        ]
-    },
     19: {
         "title": "Avoid unknown Wi-Fi networks",
         "critical": [
@@ -378,18 +355,17 @@ QUESTION_RECOMMENDATIONS = {
         ]
     },
     20: {
-        "title": "Use a VPN on public networks",
-        "critical": [
-            "Use a VPN when accessing the internet on public networks.",
-            "A VPN adds protection when you cannot avoid public Wi-Fi.",
-            "Prioritise VPN use for work, study, and account-related activity on shared networks."
-        ],
-        "improve": [
-            "Use a VPN more consistently on public networks.",
-            "Enable VPN especially when handling accounts or personal data outside home."
-        ]
-    },
-
+    "title": "Use trusted networks for sensitive activities",
+    "critical": [
+        "Avoid logging into important accounts or entering sensitive information on untrusted networks.",
+        "Wait until you are on a trusted network before performing sensitive activities.",
+        "Use mobile data or a secure home network when possible."
+    ],
+    "improve": [
+        "Reduce the number of sensitive activities performed on unfamiliar networks.",
+        "Be more cautious when accessing important services outside trusted environments."
+    ]
+},
     21: {
         "title": "Back up important files regularly",
         "critical": [
@@ -415,38 +391,75 @@ QUESTION_RECOMMENDATIONS = {
         ]
     },
     23: {
-        "title": "Protect sensitive files with encryption",
-        "critical": [
-            "Store sensitive files in encrypted form when possible.",
-            "Do not keep highly sensitive personal data unprotected on shared or portable devices.",
-            "Use encrypted storage features or secure cloud options for important files."
-        ],
-        "improve": [
-            "Protect more of your sensitive files with encryption.",
-            "Start with financial, identity, and private personal documents."
-        ]
-    },
+    "title": "Use built-in protections for sensitive files and accounts",
+    "critical": [
+        "Enable built-in device or cloud protections for sensitive files and accounts.",
+        "Avoid storing sensitive information in unprotected locations.",
+        "Use available security features such as secure storage, device protection, or account protection settings."
+    ],
+    "improve": [
+        "Review your current protection settings and enable additional built-in security features.",
+        "Move sensitive files or accounts to more secure storage or protection options."
+    ]
+},
     24: {
-        "title": "Delete unnecessary personal data",
-        "critical": [
-            "Delete unnecessary personal data from online services and old accounts.",
-            "Reduce the amount of personal information stored where it is no longer needed.",
-            "Review unused accounts and remove outdated personal data where possible."
-        ],
-        "improve": [
-            "Clean up unnecessary personal data more regularly.",
-            "Start by reviewing old accounts and services you no longer use."
-        ]
-    }
+    "title": "Review publicly visible personal information",
+    "critical": [
+        "Check what personal information is publicly visible on your online accounts immediately.",
+        "Restrict access to sensitive details such as contact information, location, and identity-related data.",
+        "Reduce unnecessary public exposure across social media and other online platforms."
+    ],
+    "improve": [
+        "Review visible personal information more regularly.",
+        "Reduce unnecessary public exposure of personal details where possible."
+    ]
+},
+    25: {
+    "title": "Protect passwords from insecure sharing or storage",
+    "critical": [
+        "Do not share your passwords with others.",
+        "Do not store passwords in plain text, notes, or screenshots.",
+        "Use a password manager instead of insecure manual storage."
+    ],
+    "improve": [
+        "Reduce insecure password storage practices.",
+        "Start moving important passwords into a secure password manager."
+    ]
+},
+    26: {
+    "title": "Do not ignore security warnings",
+    "critical": [
+        "Do not ignore browser or system security warnings when accessing websites.",
+        "Leave the page immediately if a warning appears and you do not fully trust the site.",
+        "Only continue when you understand the warning and trust the source."
+    ],
+    "improve": [
+        "Pay closer attention to browser and system warnings.",
+        "Avoid dismissing security warnings without checking the risk first."
+    ]
+},
 }
-
 
 # ----------------------------
 # GET /questions
 # ----------------------------
 @app.get("/questions")
 def get_questions(db: Session = Depends(get_db)):
-    questions = db.query(models.Question).all()
+    dimension_order = case(
+        (models.Question.dimension == "Authentication & Account Security", 1),
+        (models.Question.dimension == "Phishing & Social Engineering", 2),
+        (models.Question.dimension == "Patch & Update Hygiene", 3),
+        (models.Question.dimension == "Device Protection & Secure Configuration", 4),
+        (models.Question.dimension == "Network Hygiene", 5),
+        (models.Question.dimension == "Data Protection & Privacy", 6),
+        else_=99
+    )
+
+    questions = (
+        db.query(models.Question)
+        .order_by(dimension_order, models.Question.id.asc())
+        .all()
+    )
 
     return [
         {
@@ -457,7 +470,6 @@ def get_questions(db: Session = Depends(get_db)):
         }
         for q in questions
     ]
-
 
 # ----------------------------
 # POST /submit-assessment

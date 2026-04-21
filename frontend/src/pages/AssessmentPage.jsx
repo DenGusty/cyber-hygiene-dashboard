@@ -38,14 +38,37 @@ export default function AssessmentPage() {
     loadQuestions();
   }, []);
 
+
+    const dimensionOrder = [
+    "Authentication & Account Security",
+    "Phishing & Social Engineering",
+    "Patch & Update Hygiene",
+    "Device Protection & Secure Configuration",
+    "Network Hygiene",
+    "Data Protection & Privacy",
+  ];
+
+  const orderedQuestions = useMemo(() => {
+    return questions.map((q, index) => ({
+      ...q,
+      displayNumber: index + 1,
+    }));
+  }, [questions]);
+
   const groupedQuestions = useMemo(() => {
     const groups = {};
-    for (const q of questions) {
+
+    for (const dimension of dimensionOrder) {
+      groups[dimension] = [];
+    }
+
+    for (const q of orderedQuestions) {
       if (!groups[q.dimension]) groups[q.dimension] = [];
       groups[q.dimension].push(q);
     }
+
     return groups;
-  }, [questions]);
+  }, [orderedQuestions]);
 
   const totalQuestions = questions.length;
   const answeredCount = questions.filter(
@@ -129,7 +152,7 @@ export default function AssessmentPage() {
             <p className="eyebrow">Assessment</p>
             <h2>Cyber Hygiene Assessment</h2>
             <p className="assessment-hero-text">
-              Complete all 24 questions to generate your overall score,
+              Complete all assessment questions to generate your overall score,
               dimension breakdown, personalised recommendations, and future
               comparison data.
             </p>
@@ -202,7 +225,7 @@ export default function AssessmentPage() {
                   >
                     <div className="question-top-row">
                       <p className="question-text">
-                        <strong>Q{q.id}.</strong> {q.text}
+                        <strong>Q{q.displayNumber}.</strong> {q.text}
                       </p>
 
                       <span
