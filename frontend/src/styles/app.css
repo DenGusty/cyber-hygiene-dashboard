@@ -264,3 +264,11 @@ p {
   font-weight: 700;
   cursor: pointer;
 }
+
+.nav-link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}

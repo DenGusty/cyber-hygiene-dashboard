@@ -3,6 +3,20 @@ import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../api/authApi";
 import { saveAuth } from "../utils/auth";
 
+function getApiErrorMessage(err, fallback = "Login failed.") {
+  const detail = err.response?.data?.detail;
+
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item.msg).join(" | ");
+  }
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  return err.message || fallback;
+}
+
 export default function LoginPage({ onLoginSuccess }) {
   const [form, setForm] = useState({
     email: "",
@@ -36,11 +50,7 @@ export default function LoginPage({ onLoginSuccess }) {
       navigate("/", { replace: true });
     } catch (err) {
       console.error("Login error:", err);
-      setError(
-        err.response?.data?.detail ||
-        err.message ||
-        "Login failed."
-      );
+      setError(getApiErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -77,8 +87,8 @@ export default function LoginPage({ onLoginSuccess }) {
               name="password"
               value={form.password}
               onChange={handleChange}
-              minLength={6}
-              maxLength={128}
+              minLength={8}
+              maxLength={72}
               required
             />
           </label>

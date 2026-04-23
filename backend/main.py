@@ -1,25 +1,28 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from decimal import Decimal
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+import os
 import models
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import case
 
-# python -m uvicorn main:app --reload
 
 app = FastAPI()
+
+cors_origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost,http://127.0.0.1,http://localhost:5173,http://127.0.0.1:5173"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
-    ],
+    allow_origins=[origin.strip() for origin in cors_origins],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,7 +32,7 @@ SECRET_KEY = "change-this-to-a-long-random-secret"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
-pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
@@ -58,13 +61,11 @@ class AssessmentSubmission(BaseModel):
 
 class UserRegister(BaseModel):
     email: EmailStr
-    password: str
-
+    password: str = Field(..., min_length=8, max_length=64)
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
-
+    password: str = Field(..., min_length=8, max_length=64)
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -84,6 +85,20 @@ def calculate_risk_level(score: float) -> str:
     else:
         return "Low Risk"
 
+def validate_bcrypt_password(password: str):
+    password_bytes = password.encode("utf-8")
+
+    if len(password_bytes) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 bytes long."
+        )
+
+    if len(password_bytes) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be no more than 72 bytes long. Use only simple English letters, numbers, and symbols."
+        )
 
 def to_float(value):
     """
@@ -826,21 +841,11 @@ def get_recommendations(
 
 @app.post("/register", response_model=TokenResponse)
 def register(data: UserRegister, db: Session = Depends(get_db)):
+    validate_bcrypt_password(data.password)
+
     existing_user = db.query(models.User).filter(models.User.email == data.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered.")
-
-    if len(data.password) < 6:
-        raise HTTPException(
-            status_code=400,
-            detail="Password must be at least 6 characters."
-        )
-
-    if len(data.password) > 128:
-        raise HTTPException(
-            status_code=400,
-            detail="Password must be no more than 128 characters."
-        )
 
     new_user = models.User(
         email=data.email,
@@ -862,6 +867,8 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
 
 @app.post("/login", response_model=TokenResponse)
 def login(data: UserLogin, db: Session = Depends(get_db)):
+    validate_bcrypt_password(data.password)
+
     user = db.query(models.User).filter(models.User.email == data.email).first()
 
     if not user or not verify_password(data.password, user.password_hash):

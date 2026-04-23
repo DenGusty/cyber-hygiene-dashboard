@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useParams, Link } from "react-router-dom";
+import { useLocation, useParams, Link, useNavigate } from "react-router-dom";
 import {
   fetchAssessmentById,
   fetchRecommendations,
+  fetchUserHistory,
 } from "../api/assessmentApi";
 import ScoreOverview from "../components/ScoreOverview";
 import DimensionCard from "../components/DimensionCard";
@@ -22,10 +23,34 @@ const DIMENSION_WEIGHTS = {
 export default function DashboardPage() {
   const { assessmentId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [result, setResult] = useState(location.state?.result || null);
   const [recommendationData, setRecommendationData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const handleGoToHistory = async () => {
+    try {
+      const data = await fetchUserHistory();
+
+      if (data?.history && data.history.length > 0) {
+        navigate("/history");
+        return;
+      }
+
+      alert("No assessment history found yet. Please complete an assessment first.");
+    } catch (err) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+
+      if (status === 404) {
+        alert("No assessment history found yet. Please complete an assessment first.");
+        return;
+      }
+
+      alert(detail || "Failed to load history.");
+    }
+  };
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -125,9 +150,9 @@ export default function DashboardPage() {
         <Link to="/" className="btn btn-primary">
           Retake Assessment
         </Link>
-        <Link to="/history" className="btn btn-secondary">
+        <button type="button" className="btn btn-secondary" onClick={handleGoToHistory}>
           View History
-        </Link>
+        </button>
       </section>
 
       {topPriorityItems.length > 0 && (
@@ -171,9 +196,9 @@ export default function DashboardPage() {
             <h2>Dimension Risk Cards</h2>
           </div>
 
-          <Link to="/history" className="text-link">
+          <button type="button" className="text-link text-link-button" onClick={handleGoToHistory}>
             View Assessment History
-          </Link>
+          </button>
         </div>
 
         <div className="dimension-grid">

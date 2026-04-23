@@ -1,4 +1,4 @@
-import { Routes, Route, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import AssessmentPage from "./pages/AssessmentPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -6,6 +6,7 @@ import HistoryPage from "./pages/HistoryPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import { isLoggedIn, logout } from "./utils/auth";
+import { fetchUserHistory } from "./api/assessmentApi";
 import "./styles/app.css";
 
 function ProtectedRoute({ children, loggedIn }) {
@@ -18,6 +19,29 @@ function ProtectedRoute({ children, loggedIn }) {
 function TopNavigation({ loggedIn, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleGoToHistory = async () => {
+    try {
+      const data = await fetchUserHistory();
+
+      if (data?.history && data.history.length > 0) {
+        navigate("/history");
+        return;
+      }
+
+      alert("No assessment history found yet. Please complete an assessment first.");
+    } catch (err) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+
+      if (status === 404) {
+        alert("No assessment history found yet. Please complete an assessment first.");
+        return;
+      }
+
+      alert(detail || "Failed to load history.");
+    }
+  };
 
   const isAuthPage =
     location.pathname === "/login" || location.pathname === "/register";
@@ -45,9 +69,9 @@ function TopNavigation({ loggedIn, onLogout }) {
   } else if (isAssessmentPage || isDashboardPage) {
     navContent = (
       <>
-        <Link to="/history" className="nav-link">
+        <button type="button" className="nav-link nav-link-button" onClick={handleGoToHistory}>
           History
-        </Link>
+        </button>
         <button type="button" className="logout-btn" onClick={handleLogout}>
           Logout
         </button>

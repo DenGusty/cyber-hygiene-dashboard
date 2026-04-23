@@ -440,3 +440,11 @@
     justify-content: flex-start;
   }
 }
+
+.text-link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}

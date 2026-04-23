@@ -3,6 +3,20 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authApi";
 import { saveAuth } from "../utils/auth";
 
+function getApiErrorMessage(err, fallback = "Registration failed.") {
+  const detail = err.response?.data?.detail;
+
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item.msg).join(" | ");
+  }
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  return err.message || fallback;
+}
+
 export default function RegisterPage({ onRegisterSuccess }) {
   const [form, setForm] = useState({
     email: "",
@@ -36,11 +50,7 @@ export default function RegisterPage({ onRegisterSuccess }) {
       navigate("/", { replace: true });
     } catch (err) {
       console.error("Register error:", err);
-      setError(
-        err.response?.data?.detail ||
-        err.message ||
-        "Registration failed."
-      );
+      setError(getApiErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -77,8 +87,8 @@ export default function RegisterPage({ onRegisterSuccess }) {
               name="password"
               value={form.password}
               onChange={handleChange}
-              minLength={6}
-              maxLength={128}
+              minLength={8}
+              maxLength={72}
               required
             />
           </label>
