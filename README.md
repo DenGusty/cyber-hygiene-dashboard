@@ -30,7 +30,7 @@ A full-stack web application designed to assess and improve end-user cybersecuri
 
 ---
 
-## ▶️ How to Run
+## How to Run
 
 1. Open terminal in project root  
 2. Run:
